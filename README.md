@@ -1,5 +1,18 @@
 # React + TypeScript + Vite
 
+## Project Structure
+
+The app is organized around the FX routing flow: provider data, rate fetching, route calculation, then UI display.
+
+- `data/` stores the provider configuration from the assignment.
+- `types/` defines the shared TypeScript models used across the app.
+- `services/` normalizes live and static provider rates into one consistent format.
+- `routing/` contains the core route optimization logic, including fee calculation and top-route ranking.
+- `components/` contains the form and result display UI.
+- `utils/` contains formatting and currency helper functions.
+
+This hierarchy keeps the business logic separate from the UI. The routing engine does not need to know how each API works, and the UI does not need to know how routes are calculated. That makes the implementation easier to debug, test, and explain.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
