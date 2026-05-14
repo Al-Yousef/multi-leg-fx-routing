@@ -36,6 +36,46 @@ export function getStaticQuoteEdges(): QuoteEdge[] {
   });
 }
 
+export async function fetchAlphaFxQuoteEdges(
+  currencies: string[] = DEFAULT_FIAT_CURRENCIES,
+): Promise<QuoteEdgeLoadResult> {
+  const provider = getProviderByName("AlphaFX");
+
+  if (!provider?.api) {
+    return {
+      edges: [],
+      statuses: [
+        {
+          providerName: "AlphaFX",
+          available: false,
+          errorMessage: "AlphaFX API config is missing.",
+        },
+      ],
+    };
+  }
+
+  const requestedCurrencies = normalizeCurrencies(currencies);
+  const results = await Promise.all(
+    requestedCurrencies.map((baseCurrency) =>
+      fetchAlphaFxBaseEdges(provider, baseCurrency, requestedCurrencies),
+    ),
+  );
+  const edges = results.flatMap((result) => result.edges);
+  const failures = results.filter((result) => result.errorMessage);
+
+  return {
+    edges,
+    statuses: [
+      {
+        providerName: provider.name,
+        available: edges.length > 0,
+        errorMessage: failures.length > 0 ? failures.map((failure) => failure.errorMessage).join(" ") : undefined,
+        lastUpdated: results.find((result) => result.lastUpdated)?.lastUpdated,
+      },
+    ],
+  };
+}
+
 export async function fetchBetaBankQuoteEdges(
   currencies: string[] = DEFAULT_FIAT_CURRENCIES,
 ): Promise<QuoteEdgeLoadResult> {
@@ -87,6 +127,65 @@ type BetaBankResponse = {
   rates?: unknown;
   time_last_update_utc?: unknown;
 };
+
+type AlphaFxResponse = {
+  base?: unknown;
+  date?: unknown;
+  rates?: unknown;
+};
+
+async function fetchAlphaFxBaseEdges(
+  provider: Provider,
+  baseCurrency: string,
+  targetCurrencies: string[],
+): Promise<BaseRateResult> {
+  try {
+    const payload = await fetchJsonWithTimeout(
+      `${provider.api?.endpoint}?from=${encodeURIComponent(baseCurrency)}`,
+      FETCH_TIMEOUT_MS,
+    );
+
+    if (!isAlphaFxResponse(payload)) {
+      return {
+        edges: [],
+        errorMessage: `${provider.name} returned malformed rates for ${baseCurrency}.`,
+      };
+    }
+
+    // Frankfurter returns one base-currency quote table; filter it to currencies we route through.
+    return {
+      edges: targetCurrencies.flatMap((targetCurrency) => {
+        if (targetCurrency === baseCurrency) {
+          return [];
+        }
+
+        const rate = payload.rates[targetCurrency];
+
+        if (!Number.isFinite(rate) || rate <= 0) {
+          return [];
+        }
+
+        return [
+          {
+            providerName: provider.name,
+            providerType: provider.type,
+            from: baseCurrency,
+            to: targetCurrency,
+            rate,
+            feePercent: provider.fee_model.fee_percent,
+            feeFlat: provider.fee_model.fee_flat,
+          },
+        ];
+      }),
+      lastUpdated: typeof payload.date === "string" ? payload.date : undefined,
+    };
+  } catch (error) {
+    return {
+      edges: [],
+      errorMessage: `${provider.name} failed for ${baseCurrency}: ${getErrorMessage(error)}`,
+    };
+  }
+}
 
 async function fetchBetaBankBaseEdges(
   provider: Provider,
@@ -168,6 +267,14 @@ function getProviderByName(providerName: string): Provider | undefined {
 
 function normalizeCurrencies(currencies: string[]): string[] {
   return [...new Set(currencies.map((currency) => currency.trim().toUpperCase()).filter(Boolean))];
+}
+
+function isAlphaFxResponse(value: unknown): value is AlphaFxResponse & { rates: Record<string, number> } {
+  if (!isRecord(value) || !isRecord(value.rates)) {
+    return false;
+  }
+
+  return Object.values(value.rates).every((rate) => typeof rate === "number");
 }
 
 function isBetaBankResponse(value: unknown): value is BetaBankResponse & { rates: Record<string, number> } {
