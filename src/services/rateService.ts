@@ -1,295 +1,98 @@
 import providersData from "../data/providers.json";
 import type { Provider } from "../types/provider";
-import type { ProviderStatus, QuoteEdge } from "../types/routing";
+import type { ProviderStatus, QuoteEdge, RailFilter } from "../types/routing";
+import { fetchAlphaFxQuoteEdges } from "./providers/alphaFx";
+import { fetchBetaBankQuoteEdges } from "./providers/betaBank";
+import { fetchDeltaMarketsQuoteEdges } from "./providers/deltaMarkets";
+import { createStaticQuoteEdges } from "./providers/staticProvider";
+import type { QuoteEdgeLoadResult } from "./providers/providerUtils";
 
 type ProvidersFile = {
   providers: Provider[];
 };
 
-export type QuoteEdgeLoadResult = {
-  edges: QuoteEdge[];
-  statuses: ProviderStatus[];
-};
-
 const DEFAULT_FIAT_CURRENCIES = ["AUD", "CAD", "CHF", "EUR", "GBP", "JPY", "USD"];
-const FETCH_TIMEOUT_MS = 5000;
-
 const providerConfig = providersData as ProvidersFile;
 
-export function getStaticQuoteEdges(): QuoteEdge[] {
-  return providerConfig.providers.flatMap((provider) => {
-    if (provider.rate_source !== "static" || !provider.pairs) {
-      return [];
-    }
+export type { QuoteEdgeLoadResult };
 
-    // Static venues already list tradable pairs; normalization attaches provider fees
-    // so the route engine can treat every rate source as the same QuoteEdge shape.
-    return provider.pairs.map((pair) => ({
-      providerName: provider.name,
-      providerType: provider.type,
-      from: pair.from,
-      to: pair.to,
-      rate: pair.rate,
-      feePercent: provider.fee_model.fee_percent,
-      feeFlat: provider.fee_model.fee_flat,
-    }));
-  });
+export function getProviders(): Provider[] {
+  return providerConfig.providers;
 }
 
-export async function fetchAlphaFxQuoteEdges(
-  currencies: string[] = DEFAULT_FIAT_CURRENCIES,
-): Promise<QuoteEdgeLoadResult> {
-  const provider = getProviderByName("AlphaFX");
-
-  if (!provider?.api) {
-    return {
-      edges: [],
-      statuses: [
-        {
-          providerName: "AlphaFX",
-          available: false,
-          errorMessage: "AlphaFX API config is missing.",
-        },
-      ],
-    };
-  }
-
-  const requestedCurrencies = normalizeCurrencies(currencies);
-  const results = await Promise.all(
-    requestedCurrencies.map((baseCurrency) =>
-      fetchAlphaFxBaseEdges(provider, baseCurrency, requestedCurrencies),
-    ),
+export function getSupportedCurrencies(): string[] {
+  const staticCurrencies = providerConfig.providers.flatMap((provider) =>
+    provider.pairs?.flatMap((pair) => [pair.from, pair.to]) ?? [],
   );
-  const edges = results.flatMap((result) => result.edges);
-  const failures = results.filter((result) => result.errorMessage);
+
+  return [...new Set([...DEFAULT_FIAT_CURRENCIES, ...staticCurrencies])].sort();
+}
+
+export function getStaticQuoteEdges(railFilter: RailFilter = "all"): QuoteEdge[] {
+  return createStaticQuoteEdges(filterProviders(providerConfig.providers, railFilter));
+}
+
+export async function loadQuoteEdges(railFilter: RailFilter = "all"): Promise<QuoteEdgeLoadResult> {
+  const providers = filterProviders(providerConfig.providers, railFilter);
+  const staticProviders = providers.filter((provider) => provider.rate_source === "static");
+  const staticEdges = createStaticQuoteEdges(staticProviders);
+
+  const liveResults = await Promise.all(
+    providers
+      .filter((provider) => provider.rate_source === "live_api")
+      .map((provider) => fetchLiveProviderQuoteEdges(provider, DEFAULT_FIAT_CURRENCIES)),
+  );
 
   return {
-    edges,
+    edges: [...staticEdges, ...liveResults.flatMap((result) => result.edges)],
     statuses: [
-      {
-        providerName: provider.name,
-        available: edges.length > 0,
-        errorMessage: failures.length > 0 ? failures.map((failure) => failure.errorMessage).join(" ") : undefined,
-        lastUpdated: results.find((result) => result.lastUpdated)?.lastUpdated,
-      },
+      ...buildStaticProviderStatuses(staticProviders, staticEdges),
+      ...liveResults.flatMap((result) => result.statuses),
     ],
   };
 }
 
-export async function fetchBetaBankQuoteEdges(
-  currencies: string[] = DEFAULT_FIAT_CURRENCIES,
+function filterProviders(providers: Provider[], railFilter: RailFilter): Provider[] {
+  if (railFilter === "fiat") {
+    return providers.filter((provider) => provider.type === "fiat_broker");
+  }
+
+  if (railFilter === "stablecoin") {
+    return providers.filter((provider) => provider.type === "stablecoin_venue");
+  }
+
+  return providers;
+}
+
+function buildStaticProviderStatuses(providers: Provider[], edges: QuoteEdge[]): ProviderStatus[] {
+  return providers.map((provider) => ({
+    providerName: provider.name,
+    available: edges.some((edge) => edge.providerName === provider.name),
+    lastUpdated: "Inline config",
+  }));
+}
+
+function fetchLiveProviderQuoteEdges(
+  provider: Provider,
+  currencies: string[],
 ): Promise<QuoteEdgeLoadResult> {
-  const provider = getProviderByName("BetaBank");
-
-  if (!provider?.api) {
-    return {
-      edges: [],
-      statuses: [
-        {
-          providerName: "BetaBank",
-          available: false,
-          errorMessage: "BetaBank API config is missing.",
-        },
-      ],
-    };
-  }
-
-  const requestedCurrencies = normalizeCurrencies(currencies);
-  const results = await Promise.all(
-    requestedCurrencies.map((baseCurrency) =>
-      fetchBetaBankBaseEdges(provider, baseCurrency, requestedCurrencies),
-    ),
-  );
-  const edges = results.flatMap((result) => result.edges);
-  const failures = results.filter((result) => result.errorMessage);
-
-  return {
-    edges,
-    statuses: [
-      {
-        providerName: provider.name,
-        available: edges.length > 0,
-        errorMessage: failures.length > 0 ? failures.map((failure) => failure.errorMessage).join(" ") : undefined,
-        lastUpdated: results.find((result) => result.lastUpdated)?.lastUpdated,
-      },
-    ],
-  };
-}
-
-type BaseRateResult = {
-  edges: QuoteEdge[];
-  errorMessage?: string;
-  lastUpdated?: string;
-};
-
-type BetaBankResponse = {
-  result?: unknown;
-  rates?: unknown;
-  time_last_update_utc?: unknown;
-};
-
-type AlphaFxResponse = {
-  base?: unknown;
-  date?: unknown;
-  rates?: unknown;
-};
-
-async function fetchAlphaFxBaseEdges(
-  provider: Provider,
-  baseCurrency: string,
-  targetCurrencies: string[],
-): Promise<BaseRateResult> {
-  try {
-    const payload = await fetchJsonWithTimeout(
-      `${provider.api?.endpoint}?from=${encodeURIComponent(baseCurrency)}`,
-      FETCH_TIMEOUT_MS,
-    );
-
-    if (!isAlphaFxResponse(payload)) {
-      return {
+  switch (provider.name) {
+    case "AlphaFX":
+      return fetchAlphaFxQuoteEdges(provider, currencies);
+    case "BetaBank":
+      return fetchBetaBankQuoteEdges(provider, currencies);
+    case "DeltaMarkets":
+      return fetchDeltaMarketsQuoteEdges(provider, currencies);
+    default:
+      return Promise.resolve({
         edges: [],
-        errorMessage: `${provider.name} returned malformed rates for ${baseCurrency}.`,
-      };
-    }
-
-    // Frankfurter returns one base-currency quote table; filter it to currencies we route through.
-    return {
-      edges: targetCurrencies.flatMap((targetCurrency) => {
-        if (targetCurrency === baseCurrency) {
-          return [];
-        }
-
-        const rate = payload.rates[targetCurrency];
-
-        if (!Number.isFinite(rate) || rate <= 0) {
-          return [];
-        }
-
-        return [
+        statuses: [
           {
             providerName: provider.name,
-            providerType: provider.type,
-            from: baseCurrency,
-            to: targetCurrency,
-            rate,
-            feePercent: provider.fee_model.fee_percent,
-            feeFlat: provider.fee_model.fee_flat,
+            available: false,
+            errorMessage: `No adapter is configured for ${provider.name}.`,
           },
-        ];
-      }),
-      lastUpdated: typeof payload.date === "string" ? payload.date : undefined,
-    };
-  } catch (error) {
-    return {
-      edges: [],
-      errorMessage: `${provider.name} failed for ${baseCurrency}: ${getErrorMessage(error)}`,
-    };
+        ],
+      });
   }
 }
-
-async function fetchBetaBankBaseEdges(
-  provider: Provider,
-  baseCurrency: string,
-  targetCurrencies: string[],
-): Promise<BaseRateResult> {
-  try {
-    const payload = await fetchJsonWithTimeout(`${provider.api?.endpoint}/${baseCurrency}`, FETCH_TIMEOUT_MS);
-
-    if (!isBetaBankResponse(payload)) {
-      return {
-        edges: [],
-        errorMessage: `${provider.name} returned malformed rates for ${baseCurrency}.`,
-      };
-    }
-
-    if (payload.result !== "success") {
-      return {
-        edges: [],
-        errorMessage: `${provider.name} did not return success for ${baseCurrency}.`,
-      };
-    }
-
-    return {
-      edges: targetCurrencies.flatMap((targetCurrency) => {
-        if (targetCurrency === baseCurrency) {
-          return [];
-        }
-
-        const rate = payload.rates[targetCurrency];
-
-        if (!Number.isFinite(rate) || rate <= 0) {
-          return [];
-        }
-
-        return [
-          {
-            providerName: provider.name,
-            providerType: provider.type,
-            from: baseCurrency,
-            to: targetCurrency,
-            rate,
-            feePercent: provider.fee_model.fee_percent,
-            feeFlat: provider.fee_model.fee_flat,
-          },
-        ];
-      }),
-      lastUpdated:
-        typeof payload.time_last_update_utc === "string" ? payload.time_last_update_utc : undefined,
-    };
-  } catch (error) {
-    return {
-      edges: [],
-      errorMessage: `${provider.name} failed for ${baseCurrency}: ${getErrorMessage(error)}`,
-    };
-  }
-}
-
-async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<unknown> {
-  const controller = new AbortController();
-  const timeoutId = globalThis.setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    return await response.json();
-  } finally {
-    globalThis.clearTimeout(timeoutId);
-  }
-}
-
-function getProviderByName(providerName: string): Provider | undefined {
-  return providerConfig.providers.find((provider) => provider.name === providerName);
-}
-
-function normalizeCurrencies(currencies: string[]): string[] {
-  return [...new Set(currencies.map((currency) => currency.trim().toUpperCase()).filter(Boolean))];
-}
-
-function isAlphaFxResponse(value: unknown): value is AlphaFxResponse & { rates: Record<string, number> } {
-  if (!isRecord(value) || !isRecord(value.rates)) {
-    return false;
-  }
-
-  return Object.values(value.rates).every((rate) => typeof rate === "number");
-}
-
-function isBetaBankResponse(value: unknown): value is BetaBankResponse & { rates: Record<string, number> } {
-  if (!isRecord(value) || !isRecord(value.rates)) {
-    return false;
-  }
-
-  return Object.values(value.rates).every((rate) => typeof rate === "number");
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unknown error";
-}
-
