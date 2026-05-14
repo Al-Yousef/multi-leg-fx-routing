@@ -9,49 +9,41 @@ type RouteCardProps = {
 
 export function RouteCard({ route, rank }: RouteCardProps) {
   const targetCurrency = route.path.at(-1) ?? "";
-  const sourceCurrency = route.path[0] ?? "";
   const legCount = route.legs.length;
   const hasComparison =
     route.differenceVsDirect !== undefined && route.percentageDifferenceVsDirect !== undefined;
-  const pct = route.percentageDifferenceVsDirect;
-  const diff = route.differenceVsDirect;
-  const deltaTone = !hasComparison ? "neutral" : (pct ?? 0) >= 0 ? "positive" : "negative";
-  const deltaPct = hasComparison ? `${(pct ?? 0) >= 0 ? "+" : ""}${(pct ?? 0).toFixed(2)}%` : "Direct n/a";
-  const deltaAbs = hasComparison
-    ? `${(diff ?? 0) >= 0 ? "+" : ""}${formatAmount(diff ?? 0, targetCurrency)}`
-    : undefined;
-  const showDetailsDefault = rank === 1;
+  const pct = route.percentageDifferenceVsDirect ?? 0;
+  const deltaTone = !hasComparison ? "neutral" : pct >= 0 ? "positive" : "negative";
+  const deltaPct = hasComparison
+    ? `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`
+    : "direct n/a";
+  const rankLabel = rank === 1 ? "Best route" : "Alternative";
 
   return (
     <article className={`route-card route-card--rank-${rank}`}>
       <header className="route-card__top">
-        <span className={`route-card__delta route-card__delta--${deltaTone}`}>
-          {deltaPct}
-        </span>
-        <div className="route-card__amount">
-          <span>Delivered</span>
-          <strong>{formatAmount(route.finalAmount, targetCurrency)}</strong>
+        <div className="route-card__lead">
+          <span className="route-card__rank">{rankLabel}</span>
+          <strong className="route-card__amount">
+            {formatAmount(route.finalAmount, targetCurrency)}
+          </strong>
+        </div>
+        <div className="route-card__delta-wrap">
+          <span className={`route-card__delta route-card__delta--${deltaTone}`}>
+            {deltaPct}
+          </span>
+          <span className="route-card__delta-label">vs direct</span>
         </div>
       </header>
 
       <RoutePath route={route} />
 
-      <p className="route-card__meta">
-        <span>
-          {legCount} {legCount === 1 ? "leg" : "legs"}
-        </span>
-        <span aria-hidden="true">·</span>
-        <span>
-          {hasComparison && deltaAbs
-            ? `${deltaAbs} vs best direct ${sourceCurrency}/${targetCurrency}`
-            : "No direct one-leg route to compare"}
-        </span>
-      </p>
-
-      <details className="route-card__details" open={showDetailsDefault}>
+      <details className="route-card__details">
         <summary>
           <span>Fee breakdown</span>
-          <span className="route-card__details-hint">{legCount} {legCount === 1 ? "step" : "steps"}</span>
+          <span className="route-card__details-hint">
+            {legCount} {legCount === 1 ? "leg" : "legs"}
+          </span>
         </summary>
         <ol className="leg-list">
           {route.legs.map((leg, index) => (
@@ -72,16 +64,19 @@ function RoutePath({ route }: { route: RouteResult }) {
     <div className="route-path" aria-label="Provider path">
       {route.legs.map((leg, index) => (
         <span key={`${leg.from}-${leg.to}-${index}`} className="route-path__segment">
-          {index === 0 ? (
-            <span className="route-path__currency">{leg.from}</span>
-          ) : null}
+          {index === 0 ? <Currency code={leg.from} /> : null}
           <span className="route-path__hop">
             <span className="route-path__arrow" aria-hidden="true" />
             <span className="route-path__provider">{leg.providerName}</span>
+            <span className="route-path__arrow" aria-hidden="true" />
           </span>
-          <span className="route-path__currency">{leg.to}</span>
+          <Currency code={leg.to} />
         </span>
       ))}
     </div>
   );
+}
+
+function Currency({ code }: { code: string }) {
+  return <span className="route-path__currency">{code}</span>;
 }

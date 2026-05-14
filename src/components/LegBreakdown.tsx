@@ -8,45 +8,38 @@ type LegBreakdownProps = {
 
 export function LegBreakdown({ leg, step }: LegBreakdownProps) {
   const effectiveFeePct = leg.inputAmount > 0 ? leg.feeAmount / leg.inputAmount : 0;
+  const feeTooltip = `${formatFeePercent(leg.feePercent)} + ${formatAmount(leg.feeFlat, leg.from)} model`;
 
   return (
-    <li className="leg-breakdown">
-      <div className="leg-breakdown__row">
-        <span className="leg-breakdown__step mono">{String(step).padStart(2, "0")}</span>
-        <span className="leg-breakdown__pair">
-          <strong>{leg.from}</strong>
-          <span className="leg-breakdown__arrow" aria-hidden="true">→</span>
-          <strong>{leg.to}</strong>
-        </span>
-        <span className="leg-breakdown__provider">{leg.providerName}</span>
-        <span className="leg-breakdown__output">
-          {formatAmount(leg.outputAmount, leg.to)}
-        </span>
-      </div>
+    <li className="leg-row">
+      <span className="leg-row__step mono">{String(step).padStart(2, "0")}</span>
 
-      <dl className="leg-breakdown__numbers">
-        <div>
-          <dt>In</dt>
-          <dd>{formatAmount(leg.inputAmount, leg.from)}</dd>
-        </div>
-        <div>
-          <dt>Rate</dt>
-          <dd>{formatRate(leg.rate)}</dd>
-        </div>
-        <div>
-          <dt>Fee</dt>
-          <dd>
-            {formatAmount(leg.feeAmount, leg.from)}
-            <small> ({formatFeePercent(effectiveFeePct)})</small>
-          </dd>
-        </div>
-        <div>
-          <dt>Model</dt>
-          <dd>
-            {formatFeePercent(leg.feePercent)} + {formatAmount(leg.feeFlat, leg.from)}
-          </dd>
-        </div>
-      </dl>
+      <span className="leg-row__flow">
+        <span className="leg-row__side">
+          <span className="leg-row__amount">{formatAmount(leg.inputAmount, leg.from)}</span>
+        </span>
+        <span className="leg-row__via">
+          <span className="leg-row__arrow" aria-hidden="true" />
+          <span className="leg-row__provider">{leg.providerName}</span>
+          <span className="leg-row__arrow" aria-hidden="true" />
+        </span>
+        <span className="leg-row__side">
+          <span className="leg-row__amount leg-row__amount--out">
+            {formatAmount(leg.outputAmount, leg.to)}
+          </span>
+        </span>
+      </span>
+
+      <span className="leg-row__stats">
+        <span className="leg-row__stat">
+          <span>rate</span>
+          <strong>{formatRate(leg.rate)}</strong>
+        </span>
+        <span className="leg-row__stat" title={feeTooltip}>
+          <span>fee</span>
+          <strong>{formatFeePercent(effectiveFeePct)}</strong>
+        </span>
+      </span>
     </li>
   );
 }
