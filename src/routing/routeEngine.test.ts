@@ -32,6 +32,27 @@ describe("findTopRoutes", () => {
     expect(routes.map((route) => route.legs[0].providerName)).toEqual(["First", "Second", "Third"]);
   });
 
+  it("uses leg count and provider path as deterministic tie-breakers", () => {
+    const routes = findTopRoutes(
+      [
+        edge("ZDirect", "GBP", "JPY", 100),
+        edge("BFirst", "GBP", "USD", 10),
+        edge("BSecond", "USD", "JPY", 10),
+        edge("AFirst", "GBP", "EUR", 10),
+        edge("ASecond", "EUR", "JPY", 10),
+      ],
+      "GBP",
+      "JPY",
+      100,
+    );
+
+    expect(routes.map((route) => route.legs.map((leg) => leg.providerName))).toEqual([
+      ["ZDirect"],
+      ["AFirst", "ASecond"],
+      ["BFirst", "BSecond"],
+    ]);
+  });
+
   it("compares every route to the best one-leg route after fees", () => {
     const [bestRoute] = findTopRoutes(
       [
