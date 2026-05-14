@@ -26,6 +26,8 @@ export function calculateLeg(edge: QuoteEdge, inputAmount: number): RouteLeg | n
     from: edge.from,
     to: edge.to,
     rate: edge.rate,
+    feePercent: edge.feePercent,
+    feeFlat: edge.feeFlat,
     inputAmount,
     feeAmount,
     netAmount,

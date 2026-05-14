@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
+import { AmountScaleInsight, type AmountScaleScenario } from "./components/AmountScaleInsight";
 import { RouteForm, type RouteSearchInput } from "./components/RouteForm";
 import { RouteResults } from "./components/RouteResults";
 import { findTopRoutes } from "./routing/routeEngine";
 import { getSupportedCurrencies, loadQuoteEdges } from "./services/rateService";
-import type { ProviderStatus, RouteResult } from "./types/routing";
+import type { QuoteEdgeLoadResult } from "./services/providers/providerUtils";
 
 const initialSearch: RouteSearchInput = {
   sourceCurrency: "GBP",
@@ -15,11 +16,40 @@ const initialSearch: RouteSearchInput = {
 
 function App() {
   const [searchInput, setSearchInput] = useState<RouteSearchInput>(initialSearch);
-  const [routes, setRoutes] = useState<RouteResult[]>([]);
-  const [statuses, setStatuses] = useState<ProviderStatus[]>([]);
+  const [quoteResult, setQuoteResult] = useState<QuoteEdgeLoadResult>();
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string>();
   const currencies = getSupportedCurrencies();
+  const routes = useMemo(() => {
+    if (!quoteResult) {
+      return [];
+    }
+
+    return findTopRoutes(
+      quoteResult.edges,
+      searchInput.sourceCurrency,
+      searchInput.targetCurrency,
+      searchInput.amount,
+    );
+  }, [quoteResult, searchInput.amount, searchInput.sourceCurrency, searchInput.targetCurrency]);
+  const scaleScenarios = useMemo<AmountScaleScenario[]>(() => {
+    if (!quoteResult) {
+      return [];
+    }
+
+    const scenarioAmounts = [...new Set([searchInput.amount / 10, searchInput.amount, searchInput.amount * 10])]
+      .filter((amount) => Number.isFinite(amount) && amount > 0);
+
+    return scenarioAmounts.map((amount) => ({
+      amount,
+      route: findTopRoutes(
+        quoteResult.edges,
+        searchInput.sourceCurrency,
+        searchInput.targetCurrency,
+        amount,
+      )[0],
+    }));
+  }, [quoteResult, searchInput.amount, searchInput.sourceCurrency, searchInput.targetCurrency]);
 
   useEffect(() => {
     let isCurrentRequest = true;
@@ -30,23 +60,14 @@ function App() {
           return;
         }
 
-        setStatuses(result.statuses);
-        setRoutes(
-          findTopRoutes(
-            result.edges,
-            searchInput.sourceCurrency,
-            searchInput.targetCurrency,
-            searchInput.amount,
-          ),
-        );
+        setQuoteResult(result);
       })
       .catch((error: unknown) => {
         if (!isCurrentRequest) {
           return;
         }
 
-        setRoutes([]);
-        setStatuses([]);
+        setQuoteResult(undefined);
         setErrorMessage(error instanceof Error ? error.message : "Failed to load provider quotes.");
       })
       .finally(() => {
@@ -58,11 +79,14 @@ function App() {
     return () => {
       isCurrentRequest = false;
     };
-  }, [searchInput]);
+  }, [searchInput.railFilter]);
 
   function handleSearchSubmit(input: RouteSearchInput) {
-    setIsLoading(true);
     setErrorMessage(undefined);
+    if (input.railFilter !== searchInput.railFilter) {
+      setQuoteResult(undefined);
+      setIsLoading(true);
+    }
     setSearchInput(input);
   }
 
@@ -78,9 +102,15 @@ function App() {
 
       <RouteForm currencies={currencies} isLoading={isLoading} onSubmit={handleSearchSubmit} />
 
+      <AmountScaleInsight
+        scenarios={scaleScenarios}
+        sourceCurrency={searchInput.sourceCurrency}
+        targetCurrency={searchInput.targetCurrency}
+      />
+
       <RouteResults
         routes={routes}
-        statuses={statuses}
+        statuses={quoteResult?.statuses ?? []}
         isLoading={isLoading}
         errorMessage={errorMessage}
       />

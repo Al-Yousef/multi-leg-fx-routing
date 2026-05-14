@@ -25,6 +25,7 @@ export async function fetchDeltaMarketsQuoteEdges(
       statuses: [
         {
           providerName: provider.name,
+          availability: "unavailable",
           available: false,
           errorMessage: "DeltaMarkets API config is missing.",
         },

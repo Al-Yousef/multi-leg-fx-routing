@@ -25,6 +25,7 @@
 
 .route-form,
 .status-panel,
+.scale-panel,
 .route-card {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -79,6 +80,37 @@
   grid-column: 1 / -1;
 }
 
+.scale-panel {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+}
+
+.scale-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.scale-grid article {
+  background: var(--field-bg);
+  border-radius: 14px;
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+}
+
+.scale-grid span,
+.scale-grid small {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.scale-grid strong {
+  color: var(--text-h);
+  font-size: 18px;
+}
+
 .results-section {
   display: grid;
   gap: 24px;
@@ -120,11 +152,15 @@
   line-height: 1.4;
 }
 
-.status-ok strong {
+.status-available strong {
   color: var(--success);
 }
 
-.status-error strong {
+.status-degraded strong {
+  color: var(--accent);
+}
+
+.status-unavailable strong {
   color: var(--danger);
 }
 
@@ -194,7 +230,7 @@
 .leg-breakdown dl {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   margin: 14px 0 0;
 }
 
@@ -215,6 +251,7 @@
   }
 
   .route-form,
+  .scale-grid,
   .results-section,
   .leg-breakdown dl {
     grid-template-columns: 1fr;

@@ -17,7 +17,7 @@ export function RouteCard({ route, rank }: RouteCardProps) {
           targetCurrency,
         )} (${route.percentageDifferenceVsDirect >= 0 ? "+" : ""}${route.percentageDifferenceVsDirect.toFixed(
           3,
-        )}%) vs best direct`;
+        )}%) vs best one-leg route after fees`;
 
   return (
     <article className="route-card">

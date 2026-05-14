@@ -27,6 +27,7 @@ export async function fetchBetaBankQuoteEdges(
       statuses: [
         {
           providerName: provider.name,
+          availability: "unavailable",
           available: false,
           errorMessage: "BetaBank API config is missing.",
         },

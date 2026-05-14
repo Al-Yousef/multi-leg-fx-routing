@@ -21,6 +21,8 @@ export type RouteLeg = {
   from: string;
   to: string;
   rate: number;
+  feePercent: number;
+  feeFlat: number;
   inputAmount: number;
   feeAmount: number;
   netAmount: number;
@@ -37,9 +39,12 @@ export type RouteResult = {
   percentageDifferenceVsDirect?: number;
 };
 
+export type ProviderAvailability = "available" | "degraded" | "unavailable";
+
 // ProviderStatus tracks whether a provider was usable or failed while loading rates.
 export type ProviderStatus = {
   providerName: string;
+  availability: ProviderAvailability;
   available: boolean;
   errorMessage?: string;
   lastUpdated?: string;

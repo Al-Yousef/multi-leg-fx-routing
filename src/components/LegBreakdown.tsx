@@ -32,6 +32,16 @@ export function LegBreakdown({ leg }: LegBreakdownProps) {
           </dd>
         </div>
         <div>
+          <dt>Fee model</dt>
+          <dd>
+            {formatFeePercent(leg.feePercent)} + {formatAmount(leg.feeFlat, leg.from)}
+          </dd>
+        </div>
+        <div>
+          <dt>Net</dt>
+          <dd>{formatAmount(leg.netAmount, leg.from)}</dd>
+        </div>
+        <div>
           <dt>Output</dt>
           <dd>{formatAmount(leg.outputAmount, leg.to)}</dd>
         </div>

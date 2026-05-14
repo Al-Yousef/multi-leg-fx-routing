@@ -17,7 +17,7 @@ export function findTopRoutes(
 
   return buildRoutes(edges, sourceCurrency, targetCurrency, inputAmount, MAX_LEGS)
     .map((route) => addDirectComparison(route, directBest))
-    .sort((a, b) => b.finalAmount - a.finalAmount)
+    .sort(compareRoutes)
     .slice(0, TOP_ROUTE_LIMIT);
 }
 
@@ -43,7 +43,7 @@ function buildRoutes(
     routes,
   });
 
-  return routes.sort((a, b) => b.finalAmount - a.finalAmount);
+  return routes.sort(compareRoutes);
 }
 
 type SearchState = {
@@ -114,5 +114,25 @@ function addDirectComparison(route: RouteResult, directBest?: number): RouteResu
     differenceVsDirect,
     percentageDifferenceVsDirect: (differenceVsDirect / directBest) * 100,
   };
+}
+
+function compareRoutes(a: RouteResult, b: RouteResult): number {
+  const amountDifference = b.finalAmount - a.finalAmount;
+
+  if (amountDifference !== 0) {
+    return amountDifference;
+  }
+
+  const legDifference = a.legs.length - b.legs.length;
+
+  if (legDifference !== 0) {
+    return legDifference;
+  }
+
+  return routeSignature(a).localeCompare(routeSignature(b));
+}
+
+function routeSignature(route: RouteResult): string {
+  return route.legs.map((leg) => `${leg.from}-${leg.providerName}-${leg.to}`).join("|");
 }
 

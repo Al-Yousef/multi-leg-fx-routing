@@ -13,6 +13,7 @@ type ProvidersFile = {
 
 const DEFAULT_FIAT_CURRENCIES = ["AUD", "CAD", "CHF", "EUR", "GBP", "JPY", "USD"];
 const providerConfig = providersData as ProvidersFile;
+const quoteEdgeCache = new Map<RailFilter, Promise<QuoteEdgeLoadResult>>();
 
 export type { QuoteEdgeLoadResult };
 
@@ -22,7 +23,7 @@ export function getProviders(): Provider[] {
 
 export function getSupportedCurrencies(): string[] {
   const staticCurrencies = providerConfig.providers.flatMap((provider) =>
-    provider.pairs?.flatMap((pair) => [pair.from, pair.to]) ?? [],
+    provider.pairs?.flatMap((pair) => [pair.from.trim().toUpperCase(), pair.to.trim().toUpperCase()]) ?? [],
   );
 
   return [...new Set([...DEFAULT_FIAT_CURRENCIES, ...staticCurrencies])].sort();
@@ -33,6 +34,22 @@ export function getStaticQuoteEdges(railFilter: RailFilter = "all"): QuoteEdge[]
 }
 
 export async function loadQuoteEdges(railFilter: RailFilter = "all"): Promise<QuoteEdgeLoadResult> {
+  const cachedResult = quoteEdgeCache.get(railFilter);
+
+  if (cachedResult) {
+    return cachedResult;
+  }
+
+  const loadPromise = loadQuoteEdgesUncached(railFilter).catch((error: unknown) => {
+    quoteEdgeCache.delete(railFilter);
+    throw error;
+  });
+
+  quoteEdgeCache.set(railFilter, loadPromise);
+  return loadPromise;
+}
+
+async function loadQuoteEdgesUncached(railFilter: RailFilter): Promise<QuoteEdgeLoadResult> {
   const providers = filterProviders(providerConfig.providers, railFilter);
   const staticProviders = providers.filter((provider) => provider.rate_source === "static");
   const staticEdges = createStaticQuoteEdges(staticProviders);
@@ -65,11 +82,16 @@ function filterProviders(providers: Provider[], railFilter: RailFilter): Provide
 }
 
 function buildStaticProviderStatuses(providers: Provider[], edges: QuoteEdge[]): ProviderStatus[] {
-  return providers.map((provider) => ({
-    providerName: provider.name,
-    available: edges.some((edge) => edge.providerName === provider.name),
-    lastUpdated: "Inline config",
-  }));
+  return providers.map((provider) => {
+    const available = edges.some((edge) => edge.providerName === provider.name);
+
+    return {
+      providerName: provider.name,
+      availability: available ? "available" : "unavailable",
+      available,
+      lastUpdated: "Inline config",
+    };
+  });
 }
 
 function fetchLiveProviderQuoteEdges(
@@ -89,6 +111,7 @@ function fetchLiveProviderQuoteEdges(
         statuses: [
           {
             providerName: provider.name,
+            availability: "unavailable",
             available: false,
             errorMessage: `No adapter is configured for ${provider.name}.`,
           },

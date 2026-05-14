@@ -15,9 +15,10 @@ export function RouteResults({ routes, statuses, isLoading, errorMessage }: Rout
         <h2>Provider status</h2>
         <ul>
           {statuses.map((status) => (
-            <li key={status.providerName} className={status.available ? "status-ok" : "status-error"}>
+            <li key={status.providerName} className={`status-${status.availability}`}>
               <span>{status.providerName}</span>
-              <strong>{status.available ? "Available" : "Unavailable"}</strong>
+              <strong>{formatAvailability(status.availability)}</strong>
+              {status.lastUpdated ? <small>Rates: {status.lastUpdated}</small> : null}
               {status.errorMessage ? <small>{status.errorMessage}</small> : null}
             </li>
           ))}
@@ -32,9 +33,24 @@ export function RouteResults({ routes, statuses, isLoading, errorMessage }: Rout
           <p>No route found for this currency pair and rail filter.</p>
         ) : null}
         {routes.map((route, index) => (
-          <RouteCard key={route.legs.map((leg) => `${leg.providerName}-${leg.from}-${leg.to}`).join("|")} route={route} rank={index + 1} />
+          <RouteCard
+            key={route.legs.map((leg) => `${leg.providerName}-${leg.from}-${leg.to}`).join("|")}
+            route={route}
+            rank={index + 1}
+          />
         ))}
       </div>
     </section>
   );
+}
+
+function formatAvailability(availability: ProviderStatus["availability"]): string {
+  switch (availability) {
+    case "available":
+      return "Available";
+    case "degraded":
+      return "Degraded";
+    case "unavailable":
+      return "Unavailable";
+  }
 }

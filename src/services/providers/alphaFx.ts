@@ -27,6 +27,7 @@ export async function fetchAlphaFxQuoteEdges(
       statuses: [
         {
           providerName: provider.name,
+          availability: "unavailable",
           available: false,
           errorMessage: "AlphaFX API config is missing.",
         },
