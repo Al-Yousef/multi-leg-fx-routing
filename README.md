@@ -55,12 +55,23 @@ Live providers are isolated so one unavailable API does not prevent the app from
 
 ## AI Tools Used
 
-I used Cursor with GPT-5.5 to review the codebase, identify submission gaps, plan the finish work, implement targeted changes, and generate focused tests. I also used Cursor's code search/read tools to inspect the routing engine, provider adapters, and UI before editing, and Vercel deployment guidance for the final static deployment path.
+I used Cursor with GPT-5.5 to review the codebase, identify submission gaps, plan the finish work, implement targeted changes, and generate focused tests. I also used Cursor's code search/read tools to inspect the routing engine, provider adapters, and UI before editing, and Vercel deployment guidance for the final static deployment path. I used Cursor's Claude Opus 4.7 for the designs, UI and UX.
 
 One thing the AI initially got wrong: the first plan put too much attention on optional UI stretch goals. A review pass caught that the real blockers were submission completeness, test coverage, amount-only refetching, and provider resilience, so the plan was adjusted before implementation.
 
-Also fixed: session-long quote cache was too stale for live rates; quotes now use a 5-minute TTL with a manual refresh. The 3D hero still highlights the selected pair as decoration; routes in the results panel are authoritative.
+Other issues I noticed and corrected quickly (not exhaustive, just what I remember):
+- When 3D bundle was being created, it was too heavy up front, so I asked the AI to lazy-load the `three.js` scene and kept an SVG fallback.
+- The first caching pass could stay stale. This is not a major issue for this demo, but I still added it out of being thorough, so quote graphs now reuse amount-only searches but expire after 5 minutes with manual refresh.
+- Provider failures needed isolation; one failed API should degrade that provider, not nuke the whole quote graph. Cursor with GPT-5.5 caught this while I was asking questions about its implementation.
+- Tests covered routing/services better than product states, so I added UI coverage for loading, errors, no-route states, and form validation.
+- The 3D hero is intentionally illustrative and can highlight the selected pair; the route results remain the source of truth.
 
 ## With More Time
 
 I would move live provider fetching behind a small serverless proxy. That would allow shared caching, better rate-limit handling, provider latency metrics, and fewer browser CORS assumptions while keeping the client routing engine simple.
+
+I would also add historical route intelligence, like showing that USD to CAD improved by 1.2% this week or that certain routes tend to be better at specific times. That would make the tool more user-motivating instead of only showing a point-in-time quote.
+
+I would add E2E tests for the full user flow, from selecting currencies through seeing ranked routes, provider status, loading states, and no-route states.
+
+With more research, I would add realistic liquidity assumptions: min/max trade sizes, slippage curves, settlement speed, and provider reliability scores. Those would make the route ranking closer to how a real desk would evaluate execution quality.
