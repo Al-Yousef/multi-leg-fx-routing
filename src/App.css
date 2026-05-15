@@ -628,6 +628,49 @@ html {
   font-size: 13px;
 }
 
+.quote-refresh {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--ink-2);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.quote-refresh span {
+  line-height: 1.5;
+}
+
+.quote-refresh button {
+  flex-shrink: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--ink-1);
+  color: var(--text-h);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 9px 12px;
+  text-transform: uppercase;
+  transition: border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.quote-refresh button:hover:not(:disabled) {
+  border-color: var(--border-gold);
+  color: var(--gold);
+}
+
+.quote-refresh button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 /* Results */
 .results-section {
   display: grid;
@@ -1257,6 +1300,11 @@ html {
 
   .route-form {
     grid-template-columns: 1fr;
+  }
+
+  .quote-refresh {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .scale-grid {

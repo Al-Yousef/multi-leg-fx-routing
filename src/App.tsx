@@ -26,6 +26,8 @@ const NAV_LINKS = [
 function App() {
   const [searchInput, setSearchInput] = useState<RouteSearchInput>(initialSearch);
   const [quoteResult, setQuoteResult] = useState<QuoteEdgeLoadResult>();
+  const [quoteLoadedAt, setQuoteLoadedAt] = useState<Date>();
+  const [quoteLoadRequest, setQuoteLoadRequest] = useState({ refreshKey: 0, forceRefresh: false });
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string>();
   const currencies = getSupportedCurrencies();
@@ -87,13 +89,14 @@ function App() {
   useEffect(() => {
     let isCurrentRequest = true;
 
-    loadQuoteEdges(searchInput.railFilter)
+    loadQuoteEdges(searchInput.railFilter, { forceRefresh: quoteLoadRequest.forceRefresh })
       .then((result) => {
         if (!isCurrentRequest) {
           return;
         }
 
         setQuoteResult(result);
+        setQuoteLoadedAt(new Date());
       })
       .catch((error: unknown) => {
         if (!isCurrentRequest) {
@@ -101,6 +104,7 @@ function App() {
         }
 
         setQuoteResult(undefined);
+        setQuoteLoadedAt(undefined);
         setErrorMessage(error instanceof Error ? error.message : "Failed to load provider quotes.");
       })
       .finally(() => {
@@ -112,15 +116,25 @@ function App() {
     return () => {
       isCurrentRequest = false;
     };
-  }, [searchInput.railFilter]);
+  }, [quoteLoadRequest.forceRefresh, quoteLoadRequest.refreshKey, searchInput.railFilter]);
 
   function handleSearchSubmit(input: RouteSearchInput) {
     setErrorMessage(undefined);
     if (input.railFilter !== searchInput.railFilter) {
       setQuoteResult(undefined);
       setIsLoading(true);
+      setQuoteLoadRequest((request) => ({ ...request, forceRefresh: false }));
     }
     setSearchInput(input);
+  }
+
+  function handleRefreshQuotes() {
+    setErrorMessage(undefined);
+    setIsLoading(true);
+    setQuoteLoadRequest((request) => ({
+      refreshKey: request.refreshKey + 1,
+      forceRefresh: true,
+    }));
   }
 
   return (
@@ -262,6 +276,20 @@ function App() {
           />
 
           <RouteForm currencies={currencies} isLoading={isLoading} onSubmit={handleSearchSubmit} />
+
+          <div className="quote-refresh">
+            <span>
+              {quoteLoadedAt
+                ? `Quotes loaded at ${quoteLoadedAt.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}. Cache expires after 5 minutes.`
+                : "Quotes refresh automatically after 5 minutes."}
+            </span>
+            <button type="button" onClick={handleRefreshQuotes} disabled={isLoading}>
+              {isLoading ? "Refreshing..." : "Refresh quotes"}
+            </button>
+          </div>
 
           <RouteResults
             routes={routes}

@@ -11,9 +11,19 @@ type ProvidersFile = {
   providers: Provider[];
 };
 
+type QuoteEdgeCacheEntry = {
+  promise: Promise<QuoteEdgeLoadResult>;
+  expiresAt: number;
+};
+
+type LoadQuoteEdgesOptions = {
+  forceRefresh?: boolean;
+};
+
 const DEFAULT_FIAT_CURRENCIES = ["AUD", "CAD", "CHF", "EUR", "GBP", "JPY", "USD"];
+const QUOTE_CACHE_TTL_MS = 5 * 60 * 1000;
 const providerConfig = providersData as ProvidersFile;
-const quoteEdgeCache = new Map<RailFilter, Promise<QuoteEdgeLoadResult>>();
+const quoteEdgeCache = new Map<RailFilter, QuoteEdgeCacheEntry>();
 
 export type { QuoteEdgeLoadResult };
 
@@ -33,19 +43,28 @@ export function getStaticQuoteEdges(railFilter: RailFilter = "all"): QuoteEdge[]
   return createStaticQuoteEdges(filterProviders(providerConfig.providers, railFilter));
 }
 
-export async function loadQuoteEdges(railFilter: RailFilter = "all"): Promise<QuoteEdgeLoadResult> {
+export async function loadQuoteEdges(
+  railFilter: RailFilter = "all",
+  options: LoadQuoteEdgesOptions = {},
+): Promise<QuoteEdgeLoadResult> {
   const cachedResult = quoteEdgeCache.get(railFilter);
+  const now = Date.now();
 
-  if (cachedResult) {
-    return cachedResult;
+  if (!options.forceRefresh && cachedResult && cachedResult.expiresAt > now) {
+    return cachedResult.promise;
   }
 
   const loadPromise = loadQuoteEdgesUncached(railFilter).catch((error: unknown) => {
-    quoteEdgeCache.delete(railFilter);
+    if (quoteEdgeCache.get(railFilter)?.promise === loadPromise) {
+      quoteEdgeCache.delete(railFilter);
+    }
     throw error;
   });
 
-  quoteEdgeCache.set(railFilter, loadPromise);
+  quoteEdgeCache.set(railFilter, {
+    promise: loadPromise,
+    expiresAt: now + QUOTE_CACHE_TTL_MS,
+  });
   return loadPromise;
 }
 

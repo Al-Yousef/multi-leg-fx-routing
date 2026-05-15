@@ -17,6 +17,7 @@ Internal routing tool for comparing FX and stablecoin liquidity providers. Enter
 - Static stablecoin venue rates from `src/data/providers.json`.
 - Rail filtering for all rails, fiat only, or stablecoin venues only.
 - Provider status display with available, degraded, and unavailable states.
+- Manual quote refresh with a short cache TTL for live-rate freshness.
 - Amount sensitivity view to show how route choice changes for smaller and larger transfers.
 
 ## Run Locally
@@ -41,7 +42,7 @@ The app normalizes every provider quote into a directed `QuoteEdge` with `from`,
 
 ## Provider Handling
 
-Live providers are isolated so one unavailable API does not prevent the app from returning routes from other providers. Fetches use timeouts plus a small retry for transient network, timeout, `429`, and `5xx` failures. Malformed responses and missing pairs are treated as provider-level failures for that base currency, and providers with some usable quotes plus some failures are shown as degraded. Quote graphs are cached by rail filter during the browser session so changing only the amount recomputes routes without refetching every API.
+Live providers are isolated so one unavailable API does not prevent the app from returning routes from other providers. Fetches use timeouts plus a small retry for transient network, timeout, `429`, and `5xx` failures. Malformed responses and missing pairs are treated as provider-level failures for that base currency, and providers with some usable quotes plus some failures are shown as degraded. Quote graphs are cached by rail filter for 5 minutes so changing only the amount recomputes routes without refetching every API, and the UI exposes a manual refresh for the current rail filter.
 
 ## Project Structure
 
@@ -57,6 +58,8 @@ Live providers are isolated so one unavailable API does not prevent the app from
 I used Cursor with GPT-5.5 to review the codebase, identify submission gaps, plan the finish work, implement targeted changes, and generate focused tests. I also used Cursor's code search/read tools to inspect the routing engine, provider adapters, and UI before editing, and Vercel deployment guidance for the final static deployment path.
 
 One thing the AI initially got wrong: the first plan put too much attention on optional UI stretch goals. A review pass caught that the real blockers were submission completeness, test coverage, amount-only refetching, and provider resilience, so the plan was adjusted before implementation.
+
+Also fixed: session-long quote cache was too stale for live rates; quotes now use a 5-minute TTL with a manual refresh. The 3D hero still highlights the selected pair as decoration; routes in the results panel are authoritative.
 
 ## With More Time
 

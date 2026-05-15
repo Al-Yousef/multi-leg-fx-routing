@@ -11,6 +11,7 @@ describe("rateService", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it("loads all fiat and stablecoin providers for the all rail filter", async () => {
@@ -76,6 +77,27 @@ describe("rateService", () => {
     expect(secondFiatLoad).toBe(firstFiatLoad);
     expect(allRailLoad).not.toBe(firstFiatLoad);
     expect(fetchMock).toHaveBeenCalledTimes(REQUESTS_PER_LIVE_LOAD * 2);
+  });
+
+  it("refreshes cached quote loads when forced or expired", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-14T00:00:00Z"));
+
+    const fetchMock = stubLiveRateFetch();
+    const { loadQuoteEdges } = await import("./rateService");
+
+    const firstLoad = await loadQuoteEdges("fiat");
+    vi.setSystemTime(new Date("2026-05-14T00:04:00Z"));
+    const cachedLoad = await loadQuoteEdges("fiat");
+    const forcedLoad = await loadQuoteEdges("fiat", { forceRefresh: true });
+
+    vi.setSystemTime(new Date("2026-05-14T00:10:00Z"));
+    const expiredLoad = await loadQuoteEdges("fiat");
+
+    expect(cachedLoad).toBe(firstLoad);
+    expect(forcedLoad).not.toBe(firstLoad);
+    expect(expiredLoad).not.toBe(forcedLoad);
+    expect(fetchMock).toHaveBeenCalledTimes(REQUESTS_PER_LIVE_LOAD * 3);
   });
 });
 
