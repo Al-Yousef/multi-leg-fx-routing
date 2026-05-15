@@ -54,6 +54,11 @@ describe("fetchAlphaFxQuoteEdges", () => {
 
     const result = await fetchAlphaFxQuoteEdges(provider, ["GBP", "USD"]);
 
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "https://example.test/latest?base=GBP",
+      expect.any(Object),
+    );
     expect(result.edges).toContainEqual({
       providerName: "AlphaFX",
       providerType: "fiat_broker",

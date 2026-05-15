@@ -8,7 +8,8 @@ type LegBreakdownProps = {
 
 export function LegBreakdown({ leg, step }: LegBreakdownProps) {
   const effectiveFeePct = leg.inputAmount > 0 ? leg.feeAmount / leg.inputAmount : 0;
-  const feeTooltip = `${formatFeePercent(leg.feePercent)} + ${formatAmount(leg.feeFlat, leg.from)} model`;
+  const feeModel = `${formatFeePercent(leg.feePercent)} + ${formatAmount(leg.feeFlat, leg.from)}`;
+  const feeTooltip = `${feeModel} model; effective ${formatFeePercent(effectiveFeePct)}`;
 
   return (
     <li className="leg-row">
@@ -37,7 +38,12 @@ export function LegBreakdown({ leg, step }: LegBreakdownProps) {
         </span>
         <span className="leg-row__stat" title={feeTooltip}>
           <span>fee</span>
-          <strong>{formatFeePercent(effectiveFeePct)}</strong>
+          <strong>{formatAmount(leg.feeAmount, leg.from)}</strong>
+          <small>{feeModel}</small>
+        </span>
+        <span className="leg-row__stat">
+          <span>net</span>
+          <strong>{formatAmount(leg.netAmount, leg.from)}</strong>
         </span>
       </span>
     </li>

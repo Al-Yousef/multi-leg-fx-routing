@@ -118,7 +118,7 @@ function stubLiveRateFetch() {
 
 function createLiveRatePayload(url: string): unknown {
   if (url.includes("frankfurter")) {
-    const base = new URL(url).searchParams.get("from") ?? "USD";
+    const base = new URL(url).searchParams.get("base") ?? "USD";
 
     return {
       date: "2026-05-14",

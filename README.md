@@ -60,6 +60,8 @@ I used Cursor with GPT-5.5 to review the codebase, identify submission gaps, pla
 One thing the AI initially got wrong: the first plan put too much attention on optional UI stretch goals. A review pass caught that the real blockers were submission completeness, test coverage, amount-only refetching, and provider resilience, so the plan was adjusted before implementation.
 
 Other issues I noticed and corrected quickly (not exhaustive, just what I remember):
+- A final provider-doc check caught that AlphaFX was using Frankfurter's older `from` query parameter. The adapter now uses the current `base` parameter and has a URL assertion in the tests.
+- The per-leg breakdown originally made the computed fee and net amount less visible than the README promised. I updated the route details to show the fee amount, configured fee model, and net source amount directly.
 - When 3D bundle was being created, it was too heavy up front, so I asked the AI to lazy-load the `three.js` scene and kept an SVG fallback.
 - The first caching pass could stay stale. This is not a major issue for this demo, but I still added it out of being thorough, so quote graphs now reuse amount-only searches but expire after 5 minutes with manual refresh.
 - Provider failures needed isolation; one failed API should degrade that provider, not nuke the whole quote graph. Cursor with GPT-5.5 caught this while I was asking questions about its implementation.

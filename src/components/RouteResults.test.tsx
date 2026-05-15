@@ -76,6 +76,8 @@ describe("RouteResults", () => {
 
     expect(screen.getByText("Best route")).toBeInTheDocument();
     expect(screen.getByText("1,240 USD", { selector: ".route-card__amount" })).toBeInTheDocument();
+    expect(screen.getByText("8 GBP")).toBeInTheDocument();
+    expect(screen.getByText("992 GBP")).toBeInTheDocument();
     expect(screen.queryByText("No route found for this currency pair and rail filter.")).not.toBeInTheDocument();
   });
 });

@@ -51,9 +51,16 @@ async function fetchAlphaFxBaseEdges(
   targetCurrencies: string[],
 ): Promise<BaseRateResult> {
   try {
-    const payload = await fetchJsonWithTimeout(
-      `${provider.api?.endpoint}?from=${encodeURIComponent(baseCurrency)}`,
-    );
+    if (!provider.api) {
+      return {
+        edges: [],
+        errorMessage: `${provider.name} API config is missing for ${baseCurrency}.`,
+      };
+    }
+
+    const url = new URL(provider.api.endpoint);
+    url.searchParams.set("base", baseCurrency);
+    const payload = await fetchJsonWithTimeout(url.toString());
 
     if (!isAlphaFxResponse(payload)) {
       return {
