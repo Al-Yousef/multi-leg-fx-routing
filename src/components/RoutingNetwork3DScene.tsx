@@ -9,12 +9,23 @@ export type RoutingNetwork3DProps = {
   activePath: string[];
 };
 
-const GOLD = "#ffcc36";
-const GOLD_HOT = "#ffe07a";
-const BLUE = "#1983ff";
+type BrandColors = { gold: string; goldSoft: string; blue: string };
+
 const EDGE_DIM = "#3a3b42";
 const NODE_DIM = "#54555c";
 const NODE_TEXT = "#f3f3f6";
+
+function readBrandColorsFromCss(): BrandColors {
+  if (typeof document === "undefined") {
+    return { gold: "#d4a853", goldSoft: "#e8c36a", blue: "#1e6fd9" };
+  }
+  const s = getComputedStyle(document.documentElement);
+  return {
+    gold: s.getPropertyValue("--gold").trim() || "#d4a853",
+    goldSoft: s.getPropertyValue("--gold-soft").trim() || "#e8c36a",
+    blue: s.getPropertyValue("--blue").trim() || "#1e6fd9",
+  };
+}
 
 const SPHERE_RADIUS = 2.05;
 const MAX_BACKGROUND_NODES = 18;
@@ -100,7 +111,7 @@ function buildLayout(
   return { nodes, edges: eligible };
 }
 
-function Edge({ edge }: { edge: EdgeLayout }) {
+function Edge({ edge, gold }: { edge: EdgeLayout; gold: string }) {
   const ref = useRef<THREE.LineSegments>(null);
 
   const geometry = useMemo(() => {
@@ -135,7 +146,7 @@ function Edge({ edge }: { edge: EdgeLayout }) {
   return (
     <lineSegments ref={ref} geometry={geometry}>
       <lineBasicMaterial
-        color={edge.active ? GOLD : EDGE_DIM}
+        color={edge.active ? gold : EDGE_DIM}
         transparent
         opacity={edge.active ? 0.95 : 0.18}
         linewidth={1}
@@ -144,7 +155,7 @@ function Edge({ edge }: { edge: EdgeLayout }) {
   );
 }
 
-function Node({ node }: { node: NodeLayout }) {
+function Node({ node, gold, goldSoft }: { node: NodeLayout; gold: string; goldSoft: string }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const haloRef = useRef<THREE.Mesh>(null);
 
@@ -163,12 +174,12 @@ function Node({ node }: { node: NodeLayout }) {
       {node.active ? (
         <mesh ref={haloRef}>
           <sphereGeometry args={[0.13, 16, 16]} />
-          <meshBasicMaterial color={GOLD_HOT} transparent opacity={0.35} />
+          <meshBasicMaterial color={goldSoft} transparent opacity={0.35} />
         </mesh>
       ) : null}
       <mesh ref={meshRef}>
         <sphereGeometry args={[node.active ? 0.07 : 0.045, 16, 16]} />
-        <meshBasicMaterial color={node.active ? GOLD : NODE_DIM} />
+        <meshBasicMaterial color={node.active ? gold : NODE_DIM} />
       </mesh>
       <Html
         center
@@ -176,13 +187,13 @@ function Node({ node }: { node: NodeLayout }) {
         zIndexRange={[10, 0]}
         style={{
           pointerEvents: "none",
-          color: node.active ? GOLD : NODE_TEXT,
+          color: node.active ? gold : NODE_TEXT,
           fontFamily: "'JetBrains Mono', monospace",
           fontSize: node.active ? 12 : 10,
           fontWeight: 600,
           letterSpacing: "0.06em",
           opacity: node.active ? 1 : 0.55,
-          textShadow: node.active ? "0 0 12px rgba(255, 204, 54, 0.6)" : "none",
+          textShadow: node.active ? `0 0 14px color-mix(in srgb, ${gold} 55%, transparent)` : "none",
           transform: "translate(8px, -50%)",
           whiteSpace: "nowrap",
         }}
@@ -193,7 +204,12 @@ function Node({ node }: { node: NodeLayout }) {
   );
 }
 
-function Scene({ currencies, edges, activePath }: RoutingNetwork3DProps) {
+function Scene({
+  currencies,
+  edges,
+  activePath,
+  brand,
+}: RoutingNetwork3DProps & { brand: BrandColors }) {
   const groupRef = useRef<THREE.Group>(null);
   const { nodes, edges: eligibleEdges } = useMemo(
     () => buildLayout(currencies, edges, activePath),
@@ -210,21 +226,21 @@ function Scene({ currencies, edges, activePath }: RoutingNetwork3DProps) {
   return (
     <>
       <ambientLight intensity={0.6} />
-      <pointLight position={[5, 5, 5]} intensity={0.6} color={GOLD} />
-      <pointLight position={[-5, -5, -5]} intensity={0.4} color={BLUE} />
+      <pointLight position={[5, 5, 5]} intensity={0.6} color={brand.gold} />
+      <pointLight position={[-5, -5, -5]} intensity={0.4} color={brand.blue} />
 
       <group ref={groupRef}>
         <mesh>
           <sphereGeometry args={[SPHERE_RADIUS * 1.02, 48, 48]} />
-          <meshBasicMaterial color={BLUE} transparent opacity={0.02} wireframe />
+          <meshBasicMaterial color={brand.blue} transparent opacity={0.02} wireframe />
         </mesh>
 
         {eligibleEdges.map((edge, index) => (
-          <Edge key={`e-${index}`} edge={edge} />
+          <Edge key={`e-${index}`} edge={edge} gold={brand.gold} />
         ))}
 
         {nodes.map((node) => (
-          <Node key={node.code} node={node} />
+          <Node key={node.code} node={node} gold={brand.gold} goldSoft={brand.goldSoft} />
         ))}
       </group>
     </>
@@ -232,13 +248,15 @@ function Scene({ currencies, edges, activePath }: RoutingNetwork3DProps) {
 }
 
 export default function RoutingNetwork3DScene(props: RoutingNetwork3DProps): ReactElement {
+  const brand = useMemo(() => readBrandColorsFromCss(), []);
+
   return (
     <Canvas
       camera={{ position: [0, 0, 5.4], fov: 50 }}
       dpr={[1, 2]}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
     >
-      <Scene {...props} />
+      <Scene {...props} brand={brand} />
     </Canvas>
   );
 }

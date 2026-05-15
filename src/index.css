@@ -1,52 +1,64 @@
 :root {
-  /* SDM-inspired palette: gold on near-black ink with electric blue accent */
-  --gold: #ffcc36;
-  --gold-soft: #f5c518;
-  --gold-deep: #c69a13;
-  --blue: #1983ff;
-  --blue-soft: #5ba8ff;
+  /* Brand (shared) */
+  --gold: #d4a853;
+  --gold-soft: #e8c36a;
+  --gold-deep: #9a7428;
+  --teal: #2ec4b6;
+  --blue: #1e6fd9;
+  --blue-soft: #4a9eff;
 
-  --ink-0: #050505;
-  --ink-1: #0a0a0c;
-  --ink-2: #101013;
-  --ink-3: #15161a;
-  --ink-4: #1c1d22;
-  --ink-5: #25262c;
+  --action-start: #2bb8aa;
+  --action-end: #1e6fd9;
+  --action-hover-start: #3ac9bb;
+  --action-hover-end: #3d8eef;
 
-  --text: #a3a4ac;
-  --text-h: #f3f3f6;
-  --text-strong: #ffffff;
-  --text-dim: #6e6f78;
+  --strip-bg: #f1f5f9;
+  --strip-border: #e2e8f0;
+  --strip-text: #475569;
+  --strip-heading: #0f172a;
+  --strip-muted: #64748b;
 
-  --bg: var(--ink-0);
+  /* Page: calm grey field; product lives on white surface */
+  --hero-slab: #06090d;
+  --bg: #e4e6ea;
+  --text: #3d4756;
+  --text-h: #0b1220;
+  --text-dim: #5a6575;
+  --text-strong: #020617;
+
+  --ink-0: #06090d;
+  --ink-1: #f4f5f7;
+  --ink-2: #ffffff;
+  --ink-3: #eef0f3;
+  --ink-4: #e2e5ea;
+  --ink-5: #cfd4dc;
+
   --panel: var(--ink-2);
   --panel-elev: var(--ink-3);
-  --field-bg: var(--ink-2);
-  --border: rgba(255, 255, 255, 0.07);
-  --border-strong: rgba(255, 255, 255, 0.12);
-  --border-gold: rgba(255, 204, 54, 0.35);
+  --field-bg: #fafbfc;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --border-gold: #e2e8f0;
 
   --accent: var(--gold);
-  --accent-strong: #ffd75c;
-  --accent-bg: rgba(255, 204, 54, 0.08);
-  --accent-border: rgba(255, 204, 54, 0.4);
+  --accent-strong: #e8c36a;
+  --accent-bg: #f1f5f9;
+  --accent-border: #e2e8f0;
 
-  --success: #4ade80;
-  --warning: var(--gold);
-  --danger: #f87171;
+  --success: #15803d;
+  --warning: #a16207;
+  --danger: #b91c1c;
 
-  --shadow:
-    rgba(0, 0, 0, 0.55) 0 18px 40px -20px,
-    rgba(0, 0, 0, 0.35) 0 6px 14px -8px;
-  --shadow-gold: 0 0 0 1px rgba(255, 204, 54, 0.18), 0 24px 60px -30px rgba(255, 204, 54, 0.35);
+  --shadow: rgba(15, 23, 42, 0.06) 0 2px 8px, rgba(15, 23, 42, 0.04) 0 1px 2px;
+  --shadow-gold: var(--shadow);
 
-  --sans: 'Montserrat', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --heading: 'Montserrat', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+  --sans: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --heading: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
 
-  font: 15px/1.55 var(--sans);
+  font: 16px/1.6 var(--sans);
   letter-spacing: 0;
-  color-scheme: dark;
+  color-scheme: light;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -68,11 +80,7 @@ body {
 }
 
 body {
-  background:
-    radial-gradient(900px 500px at 85% -10%, rgba(255, 204, 54, 0.08), transparent 60%),
-    radial-gradient(700px 500px at -5% 10%, rgba(25, 131, 255, 0.06), transparent 55%),
-    var(--bg);
-  background-attachment: fixed;
+  background: var(--bg);
 }
 
 #root {
@@ -90,21 +98,21 @@ h3 {
 }
 
 h1 {
-  font-size: clamp(36px, 5vw, 58px);
+  font-size: clamp(40px, 5.2vw, 64px);
   font-weight: 700;
   line-height: 1.05;
   letter-spacing: -1.4px;
 }
 
 h2 {
-  font-size: clamp(22px, 2.2vw, 28px);
+  font-size: clamp(22px, 2.2vw, 30px);
   line-height: 1.2;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.35px;
   font-weight: 600;
 }
 
 h3 {
-  font-size: 16px;
+  font-size: 17px;
   letter-spacing: -0.1px;
 }
 
@@ -119,7 +127,28 @@ a {
 }
 
 a:hover {
-  color: var(--gold);
+  color: #334155;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
 }
 
 code,
@@ -131,15 +160,15 @@ code,
 }
 
 code {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 135%;
   padding: 3px 8px;
-  background: var(--ink-2);
+  background: var(--ink-1);
   border: 1px solid var(--border);
 }
 
 ::selection {
-  background: rgba(255, 204, 54, 0.25);
+  background: rgba(15, 23, 42, 0.12);
   color: var(--text-h);
 }
 
